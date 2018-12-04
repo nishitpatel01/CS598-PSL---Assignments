@@ -1,2 +1,2 @@
 # CS598-PSL---Assignments
-Class Assignments for UIUC 598 Practical Statistical Learning
+Class Assignments for UIUC CS598/STAT542 Practical Statistical Learning
