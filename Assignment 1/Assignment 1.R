@@ -1,6 +1,6 @@
 
 # Coding assignment 1
-# Nishit K Patel (nkp3@illinois.edu)
+# Nishit K Patel 
 
 
 set.seed(4007)
