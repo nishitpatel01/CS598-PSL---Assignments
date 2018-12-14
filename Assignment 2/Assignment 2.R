@@ -1,6 +1,6 @@
 
 # Assignment 2
-# Nishit K Patel (nkp3@illinois.edu)
+
 
 mypackages = c("leaps", "glmnet","gridExtra","gpglot2","reshape")   
 tmp = setdiff(mypackages, rownames(installed.packages())) 
