@@ -81,7 +81,7 @@ test.err.Bayes = sum(Ytest !=  Ytest_pred_Bayes) / (2*N)
 
 
 # error curve plot
-pdf("AssignmentOutput_1_4007_nkp3_NishitPatel.pdf")
+pdf("AssignmentOutput_1.pdf")
 
 plot(c(0.5,m), range(test.err.LS, train.err.LS, test.err.knn, train.err.knn),
      type="n", xlab="Degree of Freedom", ylab="Error", xaxt="n")
