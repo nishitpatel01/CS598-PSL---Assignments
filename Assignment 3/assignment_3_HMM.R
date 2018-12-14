@@ -170,7 +170,7 @@ df1 <- tableGrob(myout$A, rows = c("1","2"), cols = c("1","2"))
 df2 <- tableGrob(myout$B, rows= c("1","2"), cols = c("1","2","3"))
 
 # create pdf
-pdf("AssignmentOutput_3_HMM_4007_nkp3_NishitPatel.pdf", width=15,height=6)
+pdf("AssignmentOutput_3_HMM.pdf", width=15,height=6)
 grid.arrange(df1,df2, ncol = 1, nrow = 2)
 dev.off()
 
