@@ -1,6 +1,6 @@
 
 #assignment 3
-# Nishit K Patel (nkp3@illinois.edu)
+
 
 mypackages = c("gridExtra")   
 tmp = setdiff(mypackages, rownames(installed.packages())) 
