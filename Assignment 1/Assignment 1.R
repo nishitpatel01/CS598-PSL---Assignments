@@ -1,6 +1,5 @@
 
 # Coding assignment 1
-# Nishit K Patel 
 
 
 set.seed(4007)
