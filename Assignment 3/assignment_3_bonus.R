@@ -1,7 +1,7 @@
 
 
 # Assignment 3 Bonus credit
-# Nishit K Patel (nkp3@illinois.edu)
+
 
 
 mypackages = c("gridExtra")   
@@ -81,7 +81,7 @@ df <- cbind(cv, gcv)
 colnames(df) <- c("CV","GCV")
 
 #create pdf
-pdf("AssignmentOutput_3_Bonus_4007_nkp3_NishitPatel.pdf", width=15,height=6)
+pdf("AssignmentOutput_3_Bonus.pdf", width=15,height=6)
 grid.table(df)
 
 span1[gcv == min(gcv)]
