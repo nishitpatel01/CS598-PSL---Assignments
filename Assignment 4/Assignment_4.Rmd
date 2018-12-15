@@ -1,6 +1,6 @@
 ---
 title: "CS598 - Assignment 4: Recommandation System"
-author: "Nishit k Patel (nkp3@illinois.edu)"
+author: "Nishit k Patel"
 date: "November 28, 2018"
 output:
   pdf_document: default
