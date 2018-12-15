@@ -1,0 +1,203 @@
+---
+title: "CS598 - Assignment 4: Recommandation System"
+author: "Nishit k Patel (nkp3@illinois.edu)"
+date: "November 28, 2018"
+output:
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+The dataset used in this assignment is MovieLens 1M dataet. The dataset contains 3 files: **movies.dat**, **ratings.dat**, **users.dat**. These files contain 1,000,209 anonymous ratings of approximately 3,900 movies made by 6,040 MovieLens users who joined MovieLens in 2000.
+
+In this analysis,there are two models for recommanding movies. Both models are based on collaborative filtering. 
+
+Load the packages
+```{r message=FALSE, warning=FALSE}
+mypackages <- c("dplyr","ggplot2","recommenderlab","reshape2","knitr")   
+tmp <- setdiff(mypackages, rownames(installed.packages())) 
+if (length(tmp) > 0) install.packages(tmp)
+
+library(dplyr)
+library(ggplot2)
+library(recommenderlab)  
+library(reshape2)
+library(knitr)
+```
+
+## Exploratory Analysis
+
+```{r}
+ratings <- read.csv('ratings.dat', sep = ':', colClasses = c('integer', 'NULL'), header = FALSE)
+colnames(ratings) <- c('UserID', 'MovieID', 'Rating', 'Timestamp')
+
+movies <- readLines('movies.dat')
+movies <- strsplit(movies, split = "::", fixed = TRUE, useBytes = TRUE)
+movies <- matrix(unlist(movies), ncol = 3, byrow = TRUE)
+movies <- data.frame(movies, stringsAsFactors = FALSE)
+colnames(movies) <- c('MovieID', 'Title', 'Genres')
+movies$MovieID <- as.integer(movies$MovieID)
+
+movies$Genres <- ifelse(grepl('\\|', movies$Genres), "Multiple", movies$Genres)
+rating_merged <- merge(x = ratings, y = movies, by.x = "MovieID")
+
+#plot genre ratings
+ggplot(rating_merged, aes(x = factor(Genres), y = Rating), color = factor(vs)) +
+  stat_summary(fun.y = mean, position = position_dodge(), geom = "bar") + 
+  labs(x = "Genres", y = "Mean ratings", title = "Mean ratings by genres") + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+Creating test and triain splits to create the recommandation models. Splits are using 60/20 proportion.
+```{r}
+set.seed(4007)
+train.id <- sample(nrow(ratings), floor(nrow(ratings)) * 0.6)
+train <- ratings[train.id, ]
+write.table(train, file = 'train.dat', sep = '::', row.names = FALSE, col.names = FALSE )
+
+test <- ratings[- train.id, ]
+test.id <- sample(nrow(test), floor(nrow(test)) * 0.2)
+test <- test[test.id, ]
+test$Timestamp <- NULL
+test$ID <- 1:nrow(test)
+label <- test[c('ID', 'Rating')]
+test$Rating <- NULL
+test <- test[c('ID', 'UserID', 'MovieID')]
+colnames(test) <- c('ID', 'user', 'movie')
+colnames(train) <- c('user','movie','rating','Timestamp')
+
+write.table(test, file = 'test.csv', sep = ',', row.names = FALSE)
+write.table(label, file = 'label.csv', sep = ',', row.names = FALSE)
+
+# remove timestamp column
+colnames(train) <- c('user', 'movie', 'ratings', 'Timestamp')
+train$Timestamp <- NULL
+```
+
+- Before fitting the model, we need to convert train data to *realRatingMatrix* which is recommenderlab sparse matrix form contains ratings. 
+```{r}
+R <- acast(train, user ~ movie)
+R <- as(R, 'realRatingMatrix')
+R_m <- normalize(R)
+```
+
+## Recommander System Models
+
+### Model 1 - User Based Collaborative Filtering
+
+Setting parameters and model building. The first models is based on User based collaborative  filtering method. The parameter *method* was set to *UBCF* to indicate that. Following are the rest of parameters of the model. The similarity method used was *cosine* similarity and used 5 nearest neighbours. 
+
+User-Based Collaborative Filtering approach groups users according to prior usage behavior or according to their preferences, and then recommends an item that a similar user in the same group viewed or liked. If user 1 liked movie A, B and C, and if user 2 liked movie A and B, then movie C might make a good recommendation to user 2. The User-Based Collaborative Filtering approach mimics how word-of-mouth recommendations work in real life.
+
+For each new user, these are the steps:
+
+- Measure how similar each user is to the new one. Like IBCF, popular similarity measures are correlation and cosine.
+- Identify the most similar users. The options are:
+
+  Rate the movies rated by the most similar users. The rating is the average rating among similar users and the approaches are:
+
+- Average rating
+- Weighted average rating, using the similarities as weights
+
+below is the 1st model
+```{r message=FALSE, warning=FALSE}
+rec <- Recommender(R, method = 'UBCF',
+                  parameter = list(normalize = 'Z-score', method = 'Cosine', nn = 5, 
+                                   minRating = 1))
+
+recom <- predict(rec, R, type = 'ratings')  # predict ratings. This may be slow.
+rec_list <- as(recom, 'list')  # each element are ratings of that user
+
+test <- read.csv('test.csv', header = TRUE)
+test$rating <- NA
+
+# For all lines in test file, one by one
+for (u in 1:nrow(test)){
+  
+  # Read userid and movieid from columns 2 and 3 of test data
+  userid <- as.character(test$user[u])
+  movieid <- as.character(test$movie[u])
+  
+  rating <- rec_list[[userid]][movieid]
+  #If rating is missing then replacing with mean 
+  test$rating[u] <- ifelse(is.na(rating), 2.5, rating)
+  
+}
+
+# write submission file
+write.table(test, file = 'mysubmission1.csv', row.names = FALSE,
+            col.names = TRUE, sep = ',')
+```
+
+Calculate RMSE 
+```{r}
+ test_y <- read.csv("label.csv")
+ y_hat <- read.csv("mysubmission1.csv")
+ 
+ merged_df <- merge(test_y, y_hat , by = 'ID', all.y = TRUE)
+ ubcf_df <- sqrt(mean((merged_df$rating - merged_df$Rating)^2))
+ 
+ #model 1 rmse - 0.38
+```
+
+### Model 2 - Item Based Collaborative Filtering
+
+Another method that can be used for recommandation is Item Based Collaborative Filtering also known as **IBCF**. Item based collaborative filtering is a model-based algorithm for recommender engines. In item based collaborative filtering similarities between items are calculated from rating-matrix. And based upon these similarities, user's preference for an item not rated by him is calculated. we try to identify a short list of *items* that are "similar" to the item in the question and take weighted average of ratings for those top few items which you provided and predict that number as your likely rating for that item. 
+
+The starting point is a rating matrix in which rows correspond to users and columns correspond to items. The core algorithm is based on these steps:
+
+- For each two items, measure how similar they are in terms of having received similar ratings by similar users
+- For each item, identify the k most similar items
+- For each user, identify the items that are most similar to the user's purchases
+
+
+Below is 2nd model based on this method.
+
+```{r message=FALSE, warning=FALSE}
+rec2 <- Recommender(R,method = "IBCF", parameter= list(normalize = 'Z-score', 
+                             method = 'Cosine', nn = 5, minRating = 1)
+)
+
+recom2 <- predict(rec2, R, type='ratings')
+rec_list2 <- as(recom2, 'list')
+
+test <- read.csv('test.csv', header = TRUE)
+test$rating <- NA
+
+
+# For all lines in test file, one by one
+for (u in 1:nrow(test)){
+  
+  # Read userid and movieid from columns 2 and 3 of test data
+  userid <- as.character(test$user[u])
+  movieid <- as.character(test$movie[u])
+  
+  rating <- rec_list2[[userid]][movieid]
+  test$rating[u] <- ifelse(is.na(rating), 2.5, rating)
+}
+
+# write submission file
+write.table(test, file = 'mysubmission2.csv', row.names = FALSE,
+            col.names = TRUE, sep = ',')
+```
+
+Calculate RMSE For 2nd model
+```{r}
+ y_hat2 <- read.csv("mysubmission2.csv")
+ merged_df2 <- merge(test_y, y_hat2 , by = 'ID', all.y = TRUE)
+ ibcf_df <- sqrt(mean((merged_df2$rating - merged_df2$Rating)^2))
+ #0.51 rmse
+```
+
+RMSE for both models 
+```{r}
+df <- cbind(ubcf_df, ibcf_df)
+colnames(df) <- c("Model 1 - UBCF"," Model 2 - IBCF")
+rownames(df) <- "RMSE"
+kable(df, digits = 4,format = 'markdown')
+```
+
